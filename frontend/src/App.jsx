@@ -1,12 +1,14 @@
 import React from "react"
-function App() {
- 
+import LayoutForm from './components/LayoutForm';
 
+function App() {
   return (
-    <>
-     <h1>This is the frontend of the website</h1>
-    </>
-  )
+    <div>
+      <h1>RoomiPlan</h1>
+      <LayoutForm />
+    </div>
+  );
 }
 
-export default App
+export default App;
+
