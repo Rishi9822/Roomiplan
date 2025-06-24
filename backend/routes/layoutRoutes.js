@@ -1,21 +1,30 @@
-// backend/routes/layoutRoutes.js
-
 const express = require('express');
-const Layout = require('../models/Layout');
-
 const router = express.Router();
+const Layout = require('../models/Layout');
+const generateRoomLayout = require('../utils/generateLayout');
 
-// POST: Save a layout
 router.post('/', async (req, res) => {
   try {
     const { plotLength, plotWidth, rooms } = req.body;
 
-    const newLayout = new Layout({ plotLength, plotWidth, rooms });
+    const layout = generateRoomLayout(plotLength, plotWidth, rooms);
+
+    const newLayout = new Layout({
+      plotLength,
+      plotWidth,
+      rooms,
+      layout,
+    });
+
     await newLayout.save();
 
-    res.status(201).json({ message: 'Layout saved to DB' });
+    // ✅ Send the generated layout in the response
+    res.status(201).json({
+      message: 'Layout saved to DB',
+      layout: layout,
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to save layout' });
+    res.status(500).json({ error: err.message });
   }
 });
 
