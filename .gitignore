@@ -1,0 +1,12 @@
+node_modules/
+.env
+dist/
+*.log
+.vscode/
+
+frontend/node_modules/
+frontend/dist/
+
+backend/node_modules/
+backend/dist/
+backend/.env
