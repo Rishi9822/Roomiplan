@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import LayoutMap from './LayoutMap';
+import RoomMap from "./components/RoomMap";
+
+// Inside your return JSX
+<RoomMap layout={layout} plotLength={plotLength} plotWidth={plotWidth} />
+
 
 const LayoutForm = () => {
   const [plotLength, setPlotLength] = useState('');

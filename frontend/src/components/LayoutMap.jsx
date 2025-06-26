@@ -1,29 +1,36 @@
-const LayoutMap = ({ layout, plotWidth, plotLength }) => {
-  const scale = 10; // scaling factor to make it visually bigger on screen
+import React from "react";
+
+export default function RoomMap({ layout, plotLength, plotWidth }) {
+  if (!layout || layout.length === 0) return null;
+
+  // Scale to fit SVG viewBox (optional: tweak these values)
+  const scale = 20;
 
   return (
     <svg
       width={plotWidth * scale}
       height={plotLength * scale}
-      style={{ border: '2px solid black', margin: '20px 0' }}
+      style={{ border: "2px solid #000", marginTop: "20px" }}
     >
-      {layout.map((room, i) => (
-        <g key={i}>
+      {layout.map((room, index) => (
+        <g key={index}>
           <rect
             x={room.x * scale}
             y={room.y * scale}
             width={room.width * scale}
             height={room.height * scale}
-            fill="#a5d6a7"
-            stroke="#2e7d32"
-            strokeWidth={2}
+            fill={getRoomColor(room.name)}
+            stroke="#333"
+            strokeWidth="1"
+            rx="4"
           />
           <text
             x={(room.x + room.width / 2) * scale}
             y={(room.y + room.height / 2) * scale}
-            fontSize="12"
+            fontSize="10"
             textAnchor="middle"
-            dominantBaseline="middle"
+            fill="#fff"
+            alignmentBaseline="middle"
           >
             {room.name}
           </text>
@@ -31,6 +38,18 @@ const LayoutMap = ({ layout, plotWidth, plotLength }) => {
       ))}
     </svg>
   );
-};
+}
 
-export default LayoutMap;
+function getRoomColor(name) {
+  const colorMap = {
+    Hall: "#4A90E2",
+    Bedroom: "#7ED6DF",
+    Bathroom: "#95A5A6",
+    Kitchen: "#E67E22",
+    Parking: "#F1C40F",
+    Store: "#8E44AD",
+    Dining: "#27AE60",
+    Study: "#2ECC71",
+  };
+  return colorMap[name] || "#34495E";
+}
