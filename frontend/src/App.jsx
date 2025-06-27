@@ -13,21 +13,27 @@ export default function App() {
   const [editableLayout, setEditableLayout] = useState([]);
   const [selectedLayoutType, setSelectedLayoutType] = useState("default");
 
-  // Sync editable layout with new layout
+  // Sync editable layout with latest layout
   useEffect(() => {
     setEditableLayout([...layout]);
   }, [layout]);
 
+  // Handle updates including delete (null)
   const onRoomUpdate = (index, updatedRoom) => {
-    const updated = [...editableLayout];
-    updated[index] = updatedRoom;
-    setEditableLayout(updated);
+    if (updatedRoom === null) {
+      const updated = editableLayout.filter((_, i) => i !== index);
+      setEditableLayout(updated);
+    } else {
+      const updated = [...editableLayout];
+      updated[index] = updatedRoom;
+      setEditableLayout(updated);
+    }
   };
 
   const handleGenerate = async () => {
     try {
-      setLayout([]); // Clear current layout
-      setEditableLayout([]); // Reset editable layout
+      setLayout([]);
+      setEditableLayout([]);
 
       const res = await axios.post("http://localhost:5000/api/layout", {
         plotLength,
@@ -42,6 +48,19 @@ export default function App() {
     } catch (err) {
       console.error("Error generating layout:", err.message);
     }
+  };
+
+  const handleAddRoom = () => {
+    const newRoom = {
+      name: "New Room",
+      x: 0,
+      y: 0,
+      width: 5,
+      height: 5,
+    };
+    const updatedLayout = [...editableLayout, newRoom];
+    setEditableLayout(updatedLayout);
+    setEditMode(true);
   };
 
   return (
@@ -134,17 +153,23 @@ export default function App() {
             onClick={() => setEditMode(!editMode)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`${
-              editMode
-                ? "bg-red-500 hover:bg-red-600"
-                : "bg-blue-500 hover:bg-blue-600"
-            } text-white px-6 py-2 rounded-xl font-semibold transition duration-300`}
+            className={`${editMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"
+              } text-white px-6 py-2 rounded-xl font-semibold transition duration-300`}
           >
             {editMode ? "❌ Exit Edit Mode" : "✏️ Edit Layout"}
           </motion.button>
+
+          <motion.button
+            onClick={handleAddRoom}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-xl font-semibold shadow-md"
+          >
+            ➕ Add Room
+          </motion.button>
         </div>
 
-        {/* Layout View */}
+        {/* Layout Display */}
         <AnimatePresence mode="wait">
           <motion.div
             key={editMode ? "editor" : "map"}
