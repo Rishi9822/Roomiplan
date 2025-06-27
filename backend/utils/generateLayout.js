@@ -1,4 +1,4 @@
-// Updated generateRoomLayout.js with strategy support
+//generateRoomLayout.js with strategy support
 function generateRoomLayout(plotLength, plotWidth, rooms, layoutType = 'default') {
   const ROOM_WEIGHTS = {
     hall: 3,
