@@ -1,0 +1,51 @@
+// ✅ BACKEND LOGIC: Generate layout inside irregular plot
+
+function generateRoomsInsideIrregularPlot(sides, frontIndex, houseType) {
+  const totalLength = sides.reduce((sum, side) => sum + side.length, 0);
+  const widthEstimate = Math.min(...sides.map(s => s.length));
+  const heightEstimate = totalLength / 4;
+
+  // We'll place rooms based on houseType just like we do in rectangular plots
+  const baseX = 0;
+  const baseY = 0;
+  const layout = [];
+
+  // Utility to push room and update position
+  const addRoom = (name, w, h) => {
+    const last = layout.at(-1);
+    const y = last ? last.y + last.height : baseY;
+    layout.push({ name, x: baseX, y, width: w, height: h });
+  };
+
+  if (houseType === '1BHK') {
+    addRoom('Parking', widthEstimate, 5);
+    addRoom('Hall', widthEstimate, 8);
+    addRoom('Kitchen', widthEstimate, 5);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Bathroom', widthEstimate, 4);
+  } else if (houseType === '2BHK') {
+    addRoom('Parking', widthEstimate, 5);
+    addRoom('Hall', widthEstimate, 8);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Kitchen', widthEstimate, 5);
+    addRoom('Bathroom', widthEstimate, 4);
+    addRoom('Store', widthEstimate, 2);
+  } else if (houseType === '3BHK') {
+    addRoom('Parking', widthEstimate, 5);
+    addRoom('Hall', widthEstimate, 8);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Bedroom', widthEstimate, 6);
+    addRoom('Kitchen', widthEstimate, 5);
+    addRoom('Bathroom', widthEstimate, 4);
+    addRoom('Store', widthEstimate, 2);
+    addRoom('Study', widthEstimate, 3);
+  } else {
+    throw new Error('Invalid houseType');
+  }
+
+  return layout;
+}
+
+module.exports = { generateRoomsInsideIrregularPlot };

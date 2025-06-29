@@ -14,14 +14,15 @@ const {
   generate1BHKSplit,
 } = require('../utils/layoutPresets');
 
-// POST: Generate and save layout
+const { generateSmartLayoutInPolygon } = require("../utils/customIrregularLayout");
+
+// POST: Generate and save layout for rectangular plots
 router.post('/', async (req, res) => {
   try {
     const { plotLength, plotWidth, houseType, layoutType = 'default' } = req.body;
 
     let layout;
 
-    // 🧠 Smart layout selection based on houseType + layoutType
     if (houseType === '1BHK') {
       if (layoutType === 'vertical') {
         layout = generate1BHKVertical(plotLength, plotWidth);
@@ -50,7 +51,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Unsupported house type' });
     }
 
-    // Save layout to DB
     const newLayout = new Layout({
       plotLength,
       plotWidth,
@@ -65,6 +65,45 @@ router.post('/', async (req, res) => {
       layout,
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Generate and save layout for irregular polygon plots
+router.post('/custom', async (req, res) => {
+  try {
+    const { sides, frontIndex, houseType } = req.body;
+
+    if (!Array.isArray(sides) || sides.length < 3) {
+      return res.status(400).json({ error: "At least 3 sides required" });
+    }
+
+    const { layout: roomLayout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
+
+    if (!Array.isArray(roomLayout) || !polygonPoints || polygonPoints.length < 3) {
+      return res.status(500).json({ error: "Failed to generate valid layout or polygon points" });
+    }
+
+    const finalLayout = [
+      { type: "polygon", points: polygonPoints },
+      ...roomLayout,
+    ];
+
+    const newLayout = new Layout({
+      plotLength: null,
+      plotWidth: null,
+      rooms: roomLayout.map(r => r.name),
+      layout: finalLayout,
+    });
+
+    await newLayout.save();
+
+    res.status(201).json({
+      message: "Irregular layout generated and saved",
+      layout: finalLayout,
+    });
+  } catch (err) {
+    console.error("Error generating irregular layout:", err);
     res.status(500).json({ error: err.message });
   }
 });
