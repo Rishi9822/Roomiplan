@@ -14,14 +14,15 @@ const {
   generate1BHKSplit,
 } = require('../utils/layoutPresets');
 
-// POST: Generate and save layout
+const { generateSmartLayoutInPolygon } = require("../utils/customIrregularLayout");
+
+// POST: Generate and save layout for rectangular plots
 router.post('/', async (req, res) => {
   try {
     const { plotLength, plotWidth, houseType, layoutType = 'default' } = req.body;
 
     let layout;
 
-    // 🧠 Smart layout selection based on houseType + layoutType
     if (houseType === '1BHK') {
       if (layoutType === 'vertical') {
         layout = generate1BHKVertical(plotLength, plotWidth);
@@ -50,7 +51,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Unsupported house type' });
     }
 
-    // Save layout to DB
     const newLayout = new Layout({
       plotLength,
       plotWidth,
@@ -68,6 +68,33 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// POST: Generate and save layout for irregular polygon plots
+router.post("/custom", (req, res) => {
+  const { sides, frontIndex, houseType } = req.body;
+console.log("📥 Received custom layout request:", sides, frontIndex, houseType);
+
+try {
+  const { layout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
+
+  if (!layout || !polygonPoints) {
+    throw new Error("Layout or polygonPoints not generated");
+  }
+
+  console.log("✅ Sending layout and polygonPoints");
+
+  res.json({
+    layout,
+    polygonPoints,
+    type: "polygon"
+  });
+} catch (error) {
+  console.error("❌ Error generating custom layout:", error);
+  res.status(500).json({ error: error.message });
+}
+
+});
+
 
 // GET: Fetch all layouts
 router.get('/', async (req, res) => {

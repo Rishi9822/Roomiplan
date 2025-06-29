@@ -6,6 +6,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import RoomEditor from "./components/RoomEditor";
 import RoomMap from "./components/RoomMap";
 import RoomToolbox from "./components/RoomToolbox";
+import PolygonPlotMap from "./components/PolygonPlotMap";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,44 +19,81 @@ export default function App() {
   const [editableLayout, setEditableLayout] = useState([]);
   const [selectedLayoutType, setSelectedLayoutType] = useState("default");
 
-  // Sync editable layout with generated one
+  const [customPlotSides, setCustomPlotSides] = useState(4);
+  const [customSideLengths, setCustomSideLengths] = useState([10, 20, 10, 20]);
+  const [customFrontSideIndex, setCustomFrontSideIndex] = useState(0);
+
   useEffect(() => {
-    setEditableLayout([...layout]);
+    if (layout?.[0]?.type === "polygon") {
+      setEditableLayout(layout.slice(1));
+    } else {
+      setEditableLayout([...layout]);
+    }
   }, [layout]);
 
-  // Handle layout updates (add, modify, delete)
   const onRoomUpdate = (index, updatedRoom) => {
     const updated = [...editableLayout];
     if (updatedRoom === null) {
-      updated.splice(index, 1); // delete room
+      updated.splice(index, 1);
     } else if (index === "full") {
-      setEditableLayout(updatedRoom); // replace full layout
+      setEditableLayout(updatedRoom);
       return;
     } else {
-      updated[index] = updatedRoom; // modify room
+      updated[index] = updatedRoom;
     }
     setEditableLayout(updated);
   };
 
-  // Handle layout generation from backend
   const handleGenerate = async () => {
-    try {
-      setLayout([]);
-      setEditableLayout([]);
-      const res = await axios.post("http://localhost:5000/api/layout", {
-        plotLength,
-        plotWidth,
-        houseType: preset,
-        layoutType: selectedLayoutType,
-      });
-      setLayout(res.data.layout);
-      setEditMode(false);
-    } catch (err) {
-      console.error("Error generating layout:", err.message);
-    }
-  };
+  try {
+    setLayout([]);
+    setEditableLayout([]);
 
-  // Add a new blank room
+    let res = null;
+
+if (selectedLayoutType === "custom") {
+  const numericSides = customSideLengths.map(length => Number(length));
+
+  res = await axios.post("http://localhost:5000/api/layout/custom", {
+  sides: customSideLengths.map((length) => ({ length })), // Correct
+  frontIndex: customFrontSideIndex,
+  houseType: preset,
+});
+
+}
+ else {
+  res = await axios.post("http://localhost:5000/api/layout", {
+    plotLength,
+    plotWidth,
+    houseType: preset,
+    layoutType: selectedLayoutType,
+  });
+}
+
+if (res?.data?.layout) {
+  setLayout(res.data.layout);
+  setEditMode(false);
+} else {
+  alert("Layout generation failed.");
+}
+
+
+    // ✅ Safely check for layout array
+    const dataLayout = res.data.layout;
+
+    if (!Array.isArray(dataLayout)) {
+      throw new Error("Invalid layout format received from server.");
+    }
+
+    setLayout(dataLayout);
+    setEditMode(false);
+  } catch (err) {
+    console.error("❌ Error generating layout:", err);
+    alert("Layout generation failed. Please check plot dimensions or try again.");
+  }
+};
+
+
   const handleAddRoom = () => {
     const newRoom = {
       name: "New Room",
@@ -68,21 +106,64 @@ export default function App() {
     setEditMode(true);
   };
 
-  // Handle drop from toolbox
-  const handleDropRoomFromToolbox = useCallback(
-    (roomType) => {
-      const newRoom = {
-        name: roomType,
-        x: 0,
-        y: 0,
-        width: 5,
-        height: 5,
-      };
-      setEditableLayout((prev) => [...prev, newRoom]);
-      setEditMode(true);
-    },
-    [setEditableLayout]
-  );
+  const handleDropRoomFromToolbox = useCallback((roomType) => {
+    const newRoom = {
+      name: roomType,
+      x: 0,
+      y: 0,
+      width: 5,
+      height: 5,
+    };
+    setEditableLayout((prev) => [...prev, newRoom]);
+    setEditMode(true);
+  }, []);
+
+  const renderCustomPlotInputs = () => {
+    return (
+      <div className="col-span-2 grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <label className="text-md font-medium text-gray-700">Number of Sides</label>
+          <input
+            type="number"
+            min={3}
+            value={customPlotSides}
+            onChange={(e) => {
+              const count = parseInt(e.target.value);
+              setCustomPlotSides(count);
+              setCustomSideLengths(Array(count).fill(10));
+            }}
+            className="w-full px-3 py-2 rounded border"
+          />
+        </div>
+
+        {customSideLengths.map((length, index) => (
+          <div key={index}>
+            <label className="text-sm text-gray-600">Side {index + 1} Length</label>
+            <input
+              type="number"
+              value={length}
+              onChange={(e) => {
+                const updated = [...customSideLengths];
+                updated[index] = parseFloat(e.target.value);
+                setCustomSideLengths(updated);
+              }}
+              className="w-full px-2 py-1 rounded border"
+            />
+          </div>
+        ))}
+
+        <div className="col-span-2">
+          <label className="text-sm text-gray-700">Front Side Index (0-based)</label>
+          <input
+            type="number"
+            value={customFrontSideIndex}
+            onChange={(e) => setCustomFrontSideIndex(Number(e.target.value))}
+            className="w-full px-3 py-2 rounded border"
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -93,7 +174,6 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          {/* Heading */}
           <motion.h1
             className="text-4xl md:text-5xl font-extrabold text-center text-gray-800 mb-10"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -103,22 +183,13 @@ export default function App() {
             🏠 <span className="text-purple-600">RoomiPlan</span> Designer
           </motion.h1>
 
-          {/* Control Panel */}
-          <motion.div
-            className="grid md:grid-cols-4 gap-6 mb-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            {/* House Type */}
+          <motion.div className="grid md:grid-cols-4 gap-6 mb-10">
             <div className="flex flex-col">
-              <label className="text-lg font-semibold text-gray-700 mb-1">
-                House Type
-              </label>
+              <label className="text-lg font-semibold text-gray-700 mb-1">House Type</label>
               <select
                 value={preset}
                 onChange={(e) => setPreset(e.target.value)}
-                className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm"
               >
                 <option value="1BHK">1BHK</option>
                 <option value="2BHK">2BHK</option>
@@ -126,50 +197,44 @@ export default function App() {
               </select>
             </div>
 
-            {/* Layout Style */}
             <div className="flex flex-col">
-              <label className="text-lg font-semibold text-gray-700 mb-1">
-                Layout Style
-              </label>
+              <label className="text-lg font-semibold text-gray-700 mb-1">Layout Style</label>
               <select
                 value={selectedLayoutType}
                 onChange={(e) => setSelectedLayoutType(e.target.value)}
-                className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm"
               >
                 <option value="default">Default</option>
                 <option value="vertical">Vertical Stack</option>
                 <option value="split">Split Columns</option>
+                <option value="custom">Irregular Plot (Custom)</option>
               </select>
             </div>
 
-            {/* Plot Dimensions */}
-            <div className="flex flex-col md:flex-row gap-4 items-center col-span-2">
-              <div className="flex flex-col w-full">
-                <label className="text-lg font-semibold text-gray-700 mb-1">
-                  Plot Length
-                </label>
-                <input
-                  type="number"
-                  value={plotLength}
-                  onChange={(e) => setPlotLength(Number(e.target.value))}
-                  className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            {selectedLayoutType === "custom" ? renderCustomPlotInputs() : (
+              <div className="flex flex-col md:flex-row gap-4 items-center col-span-2">
+                <div className="flex flex-col w-full">
+                  <label className="text-lg font-semibold text-gray-700 mb-1">Plot Length</label>
+                  <input
+                    type="number"
+                    value={plotLength}
+                    onChange={(e) => setPlotLength(Number(e.target.value))}
+                    className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm"
+                  />
+                </div>
+                <div className="flex flex-col w-full">
+                  <label className="text-lg font-semibold text-gray-700 mb-1">Plot Width</label>
+                  <input
+                    type="number"
+                    value={plotWidth}
+                    onChange={(e) => setPlotWidth(Number(e.target.value))}
+                    className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col w-full">
-                <label className="text-lg font-semibold text-gray-700 mb-1">
-                  Plot Width
-                </label>
-                <input
-                  type="number"
-                  value={plotWidth}
-                  onChange={(e) => setPlotWidth(Number(e.target.value))}
-                  className="px-4 py-2 rounded-xl border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+            )}
           </motion.div>
 
-          {/* Action Buttons */}
           <div className="flex flex-wrap justify-between mb-6 gap-4">
             <motion.button
               onClick={handleGenerate}
@@ -184,11 +249,7 @@ export default function App() {
               onClick={() => setEditMode(!editMode)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`${
-                editMode
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-blue-500 hover:bg-blue-600"
-              } text-white px-6 py-2 rounded-xl font-semibold transition`}
+              className={`$${editMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"} text-white px-6 py-2 rounded-xl font-semibold`}
             >
               {editMode ? "❌ Exit Edit Mode" : "✏️ Edit Layout"}
             </motion.button>
@@ -203,7 +264,6 @@ export default function App() {
             </motion.button>
           </div>
 
-          {/* Layout and Toolbox View */}
           <AnimatePresence mode="wait">
             <motion.div
               key={editMode ? "editor" : "map"}
@@ -213,14 +273,12 @@ export default function App() {
               exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.4 }}
             >
-              {/* Toolbox */}
               {editMode && (
                 <div className="flex-shrink-0">
-                  <RoomToolbox />
+                  <RoomToolbox onDropRoom={handleDropRoomFromToolbox} />
                 </div>
               )}
 
-              {/* Room Canvas */}
               <div>
                 {editMode ? (
                   <RoomEditor
@@ -230,12 +288,10 @@ export default function App() {
                     onUpdate={onRoomUpdate}
                     onDropNewRoom={handleDropRoomFromToolbox}
                   />
+                ) : selectedLayoutType === "custom" ? (
+                  <RoomMap layout={layout} plotLength={30} plotWidth={30} editMode={false} />
                 ) : (
-                  <RoomMap
-                    layout={layout}
-                    plotLength={plotLength}
-                    plotWidth={plotWidth}
-                  />
+                  <RoomMap layout={layout} plotLength={plotLength} plotWidth={plotWidth} editMode={false} />
                 )}
               </div>
             </motion.div>

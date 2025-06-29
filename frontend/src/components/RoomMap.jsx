@@ -6,8 +6,25 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
 
   const SVG_WIDTH = 800;
   const SVG_HEIGHT = 500;
-  const xScale = SVG_WIDTH / plotWidth;
-  const yScale = SVG_HEIGHT / plotLength;
+
+ const isPolygon = layout?.type === "polygon";
+const rooms = isPolygon ? layout.rooms : layout;
+const polygonPoints = isPolygon ? layout.polygonPoints : null;
+  const boundingBox = isPolygon
+    ? {
+        minX: Math.min(...polygonPoints.map(p => p.x)),
+        maxX: Math.max(...polygonPoints.map(p => p.x)),
+        minY: Math.min(...polygonPoints.map(p => p.y)),
+        maxY: Math.max(...polygonPoints.map(p => p.y)),
+      }
+    : null;
+
+  const xScale = isPolygon
+    ? SVG_WIDTH / (boundingBox.maxX - boundingBox.minX)
+    : SVG_WIDTH / plotWidth;
+  const yScale = isPolygon
+    ? SVG_HEIGHT / (boundingBox.maxY - boundingBox.minY)
+    : SVG_HEIGHT / plotLength;
 
   const roomColors = {
     hall: "#a2d2ff",
@@ -20,18 +37,18 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
     study: "#ffc6ff",
   };
 
-  const [rooms, setRooms] = useState(layout);
+  const [localRooms, setLocalRooms] = useState(rooms);
 
   const handleUpdate = (index, newX, newY, newW, newH) => {
-    const updated = [...rooms];
+    const updated = [...localRooms];
     updated[index] = {
       ...updated[index],
-      x: newX / xScale,
-      y: newY / yScale,
+      x: newX / xScale + (isPolygon ? boundingBox.minX : 0),
+      y: newY / yScale + (isPolygon ? boundingBox.minY : 0),
       width: newW / xScale,
       height: newH / yScale,
     };
-    setRooms(updated);
+    setLocalRooms(updated);
   };
 
   return (
@@ -45,7 +62,8 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
         background: "#f9f9f9",
       }}
     >
-      {/* Grid background */}
+      
+      {/* Grid */}
       {[...Array(20)].map((_, i) => (
         <div
           key={`h${i}`}
@@ -73,61 +91,48 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
         />
       ))}
 
+      {/* Polygon Shape Outline */}
+      {isPolygon && polygonPoints && (
+        <svg
+          width={SVG_WIDTH}
+          height={SVG_HEIGHT}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
+        >
+          <polygon
+             points={polygonPoints.map(p => `${p.x},${p.y}`).join(" ")}
+            fill="rgba(0, 0, 0, 0.05)"
+            stroke="black"
+            strokeWidth={2}
+          />
+        </svg>
+      )}
+
       {/* Rooms */}
-      {rooms.map((room, index) => {
-        const color = roomColors[room.name.toLowerCase()] || "#ddd";
-        const x = room.x * xScale;
-        const y = room.y * yScale;
+      {localRooms.map((room, index) => {
+        const color = roomColors[room.name?.toLowerCase()] || "#ddd";
+        const x = (room.x - (isPolygon ? boundingBox.minX : 0)) * xScale;
+        const y = (room.y - (isPolygon ? boundingBox.minY : 0)) * yScale;
         const width = room.width * xScale;
         const height = room.height * yScale;
 
         return editMode ? (
-          // <Rnd
-          //   key={index}
-          //   size={{ width, height }}
-          //   position={{ x, y }}
-          //   bounds="parent"
-          //   onDragStop={(e, d) => handleUpdate(index, d.x, d.y, width, height)}
-          //   onResizeStop={(e, dir, ref, delta, pos) => {
-          //     handleUpdate(index, pos.x, pos.y, ref.offsetWidth, ref.offsetHeight);
-          //   }}
-          //   style={{
-          //     border: "2px solid #333",
-          //     background: color,
-          //     display: "flex",
-          //     alignItems: "center",
-          //     justifyContent: "center",
-          //     fontWeight: "bold",
-          //     fontSize: "14px",
-          //   }}
-          // >
-          //   {room.name}
-          // </Rnd>
           <Rnd
             key={index}
-            size={{ width: room.width * xScale, height: room.height * yScale }}
-            position={{ x: room.x * xScale, y: room.y * yScale }}
+            size={{ width, height }}
+            position={{ x, y }}
             bounds="parent"
             onDragStop={(e, d) => {
-              onRoomUpdate(index, {
-                ...room,
-                x: d.x / xScale,
-                y: d.y / yScale,
-              });
+              handleUpdate(index, d.x, d.y, width, height);
             }}
             onResizeStop={(e, direction, ref, delta, position) => {
-              onRoomUpdate(index, {
-                ...room,
-                width: ref.offsetWidth / xScale,
-                height: ref.offsetHeight / yScale,
-                x: position.x / xScale,
-                y: position.y / yScale,
-              });
+              handleUpdate(index, position.x, position.y, ref.offsetWidth, ref.offsetHeight);
             }}
           >
-            {/* Room Box Code */}
-
-
             <div
               style={{
                 width: "100%",
@@ -143,8 +148,6 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
               }}
             >
               <span>{room.name}</span>
-
-              {/* ➕ Add this Floating Label for Dimensions */}
               <div
                 style={{
                   position: "absolute",
@@ -162,7 +165,6 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
               </div>
             </div>
           </Rnd>
-
         ) : (
           <div
             key={index}
