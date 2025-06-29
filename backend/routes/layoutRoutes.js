@@ -70,43 +70,31 @@ router.post('/', async (req, res) => {
 });
 
 // POST: Generate and save layout for irregular polygon plots
-router.post('/custom', async (req, res) => {
-  try {
-    const { sides, frontIndex, houseType } = req.body;
+router.post("/custom", (req, res) => {
+  const { sides, frontIndex, houseType } = req.body;
+console.log("📥 Received custom layout request:", sides, frontIndex, houseType);
 
-    if (!Array.isArray(sides) || sides.length < 3) {
-      return res.status(400).json({ error: "At least 3 sides required" });
-    }
+try {
+  const { layout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
 
-    const { layout: roomLayout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
-
-    if (!Array.isArray(roomLayout) || !polygonPoints || polygonPoints.length < 3) {
-      return res.status(500).json({ error: "Failed to generate valid layout or polygon points" });
-    }
-
-    const finalLayout = [
-      { type: "polygon", points: polygonPoints },
-      ...roomLayout,
-    ];
-
-    const newLayout = new Layout({
-      plotLength: null,
-      plotWidth: null,
-      rooms: roomLayout.map(r => r.name),
-      layout: finalLayout,
-    });
-
-    await newLayout.save();
-
-    res.status(201).json({
-      message: "Irregular layout generated and saved",
-      layout: finalLayout,
-    });
-  } catch (err) {
-    console.error("Error generating irregular layout:", err);
-    res.status(500).json({ error: err.message });
+  if (!layout || !polygonPoints) {
+    throw new Error("Layout or polygonPoints not generated");
   }
+
+  console.log("✅ Sending layout and polygonPoints");
+
+  res.json({
+    layout,
+    polygonPoints,
+    type: "polygon"
+  });
+} catch (error) {
+  console.error("❌ Error generating custom layout:", error);
+  res.status(500).json({ error: error.message });
+}
+
 });
+
 
 // GET: Fetch all layouts
 router.get('/', async (req, res) => {

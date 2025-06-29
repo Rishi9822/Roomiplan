@@ -7,10 +7,9 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
   const SVG_WIDTH = 800;
   const SVG_HEIGHT = 500;
 
-  const isPolygon = Array.isArray(layout) && layout[0]?.type === "polygon";
-  const polygonPoints = isPolygon ? layout[0].points : [];
-  const rooms = isPolygon ? layout.slice(1) : layout;
-
+ const isPolygon = layout?.type === "polygon";
+const rooms = isPolygon ? layout.rooms : layout;
+const polygonPoints = isPolygon ? layout.polygonPoints : null;
   const boundingBox = isPolygon
     ? {
         minX: Math.min(...polygonPoints.map(p => p.x)),
@@ -63,6 +62,7 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
         background: "#f9f9f9",
       }}
     >
+      
       {/* Grid */}
       {[...Array(20)].map((_, i) => (
         <div
@@ -104,9 +104,7 @@ export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
           }}
         >
           <polygon
-            points={polygonPoints
-              .map(p => `${(p.x - boundingBox.minX) * xScale},${(p.y - boundingBox.minY) * yScale}`)
-              .join(" ")}
+             points={polygonPoints.map(p => `${p.x},${p.y}`).join(" ")}
             fill="rgba(0, 0, 0, 0.05)"
             stroke="black"
             strokeWidth={2}

@@ -49,30 +49,37 @@ export default function App() {
     setLayout([]);
     setEditableLayout([]);
 
-    let response;
+    let res = null;
 
-    if (selectedLayoutType === "custom") {
-      const polygonPoints = customSideLengths.map((length, index) => ({
-        length,
-        index,
-      }));
+if (selectedLayoutType === "custom") {
+  const numericSides = customSideLengths.map(length => Number(length));
 
-      response = await axios.post("http://localhost:5000/api/layout/custom", {
-        sides: polygonPoints,
-        frontIndex: customFrontSideIndex,
-        houseType: preset,
-      });
-    } else {
-      response = await axios.post("http://localhost:5000/api/layout", {
-        plotLength,
-        plotWidth,
-        houseType: preset,
-        layoutType: selectedLayoutType,
-      });
-    }
+  res = await axios.post("http://localhost:5000/api/layout/custom", {
+  sides: customSideLengths.map((length) => ({ length })), // Correct
+  frontIndex: customFrontSideIndex,
+  houseType: preset,
+});
+
+}
+ else {
+  res = await axios.post("http://localhost:5000/api/layout", {
+    plotLength,
+    plotWidth,
+    houseType: preset,
+    layoutType: selectedLayoutType,
+  });
+}
+
+if (res?.data?.layout) {
+  setLayout(res.data.layout);
+  setEditMode(false);
+} else {
+  alert("Layout generation failed.");
+}
+
 
     // ✅ Safely check for layout array
-    const dataLayout = response.data.layout;
+    const dataLayout = res.data.layout;
 
     if (!Array.isArray(dataLayout)) {
       throw new Error("Invalid layout format received from server.");

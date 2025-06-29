@@ -3,7 +3,7 @@ function generateSmartLayoutInPolygon(sides, frontIndex, houseType) {
   if (!Array.isArray(sides) || sides.length < 3) {
     throw new Error("At least 3 sides required to form a polygon");
   }
-
+console.log("🧠 Generating layout with:", { sides, frontIndex, houseType });
   // --- Constants ---
   const centerX = 400;
   const centerY = 250;
@@ -74,8 +74,8 @@ function generateSmartLayoutInPolygon(sides, frontIndex, houseType) {
   }));
 
   return {
-    layout,
-    polygonPoints,
+    layout: Array.isArray(layout) ? [...layout] : [],
+    polygonPoints: Array.isArray(polygonPoints) ? [...polygonPoints] : [],
   };
 }
 
