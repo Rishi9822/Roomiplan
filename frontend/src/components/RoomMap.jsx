@@ -1,30 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Rnd } from "react-rnd";
 
-export default function RoomMap({ layout, plotLength, plotWidth, editMode }) {
+export default function RoomMap({ layout, plotLength, plotWidth, polygon = [], editMode }) {
   if (!layout || layout.length === 0) return <p>No layout to display.</p>;
 
   const SVG_WIDTH = 800;
   const SVG_HEIGHT = 500;
 
- const isPolygon = layout?.type === "polygon";
-const rooms = isPolygon ? layout.rooms : layout;
-const polygonPoints = isPolygon ? layout.polygonPoints : null;
+  const isPolygon = polygon && Array.isArray(polygon) && polygon.length >= 3;
+
   const boundingBox = isPolygon
     ? {
-        minX: Math.min(...polygonPoints.map(p => p.x)),
-        maxX: Math.max(...polygonPoints.map(p => p.x)),
-        minY: Math.min(...polygonPoints.map(p => p.y)),
-        maxY: Math.max(...polygonPoints.map(p => p.y)),
+        minX: Math.min(...polygon.map((p) => p?.x ?? 0)),
+        maxX: Math.max(...polygon.map((p) => p?.x ?? 0)),
+        minY: Math.min(...polygon.map((p) => p?.y ?? 0)),
+        maxY: Math.max(...polygon.map((p) => p?.y ?? 0)),
       }
     : null;
 
   const xScale = isPolygon
-    ? SVG_WIDTH / (boundingBox.maxX - boundingBox.minX)
-    : SVG_WIDTH / plotWidth;
+    ? SVG_WIDTH / (boundingBox.maxX - boundingBox.minX || 1)
+    : SVG_WIDTH / (plotWidth || 1);
+
   const yScale = isPolygon
-    ? SVG_HEIGHT / (boundingBox.maxY - boundingBox.minY)
-    : SVG_HEIGHT / plotLength;
+    ? SVG_HEIGHT / (boundingBox.maxY - boundingBox.minY || 1)
+    : SVG_HEIGHT / (plotLength || 1);
+
+  const offsetX = isPolygon ? boundingBox.minX : 0;
+  const offsetY = isPolygon ? boundingBox.minY : 0;
 
   const roomColors = {
     hall: "#a2d2ff",
@@ -37,14 +40,18 @@ const polygonPoints = isPolygon ? layout.polygonPoints : null;
     study: "#ffc6ff",
   };
 
-  const [localRooms, setLocalRooms] = useState(rooms);
+  const [localRooms, setLocalRooms] = useState(layout);
+
+  useEffect(() => {
+    setLocalRooms(layout);
+  }, [layout]);
 
   const handleUpdate = (index, newX, newY, newW, newH) => {
     const updated = [...localRooms];
     updated[index] = {
       ...updated[index],
-      x: newX / xScale + (isPolygon ? boundingBox.minX : 0),
-      y: newY / yScale + (isPolygon ? boundingBox.minY : 0),
+      x: newX / xScale + offsetX,
+      y: newY / yScale + offsetY,
       width: newW / xScale,
       height: newH / yScale,
     };
@@ -62,8 +69,7 @@ const polygonPoints = isPolygon ? layout.polygonPoints : null;
         background: "#f9f9f9",
       }}
     >
-      
-      {/* Grid */}
+      {/* Grid Lines */}
       {[...Array(20)].map((_, i) => (
         <div
           key={`h${i}`}
@@ -91,34 +97,45 @@ const polygonPoints = isPolygon ? layout.polygonPoints : null;
         />
       ))}
 
-      {/* Polygon Shape Outline */}
-      {isPolygon && polygonPoints && (
+      {/* Polygon Background */}
+      {isPolygon && (
         <svg
-          width={SVG_WIDTH}
-          height={SVG_HEIGHT}
+          width="100%"
+          height="100%"
           style={{
             position: "absolute",
             top: 0,
             left: 0,
-            pointerEvents: "none",
+            zIndex: 0,
           }}
         >
           <polygon
-             points={polygonPoints.map(p => `${p.x},${p.y}`).join(" ")}
-            fill="rgba(0, 0, 0, 0.05)"
-            stroke="black"
-            strokeWidth={2}
+            points={polygon
+              .map((p) => {
+                if (typeof p.x !== "number" || typeof p.y !== "number") return null;
+                const x = (p.x - offsetX) * xScale;
+                const y = (p.y - offsetY) * yScale;
+                return `${x},${y}`;
+              })
+              .filter(Boolean)
+              .join(" ")}
+            fill="rgba(99,102,241,0.08)"
+            stroke="#4F46E5"
+            strokeWidth="2"
           />
         </svg>
       )}
 
-      {/* Rooms */}
+      {/* Room Boxes */}
       {localRooms.map((room, index) => {
         const color = roomColors[room.name?.toLowerCase()] || "#ddd";
-        const x = (room.x - (isPolygon ? boundingBox.minX : 0)) * xScale;
-        const y = (room.y - (isPolygon ? boundingBox.minY : 0)) * yScale;
+
+        const x = (room.x - offsetX) * xScale;
+        const y = (room.y - offsetY) * yScale;
         const width = room.width * xScale;
         const height = room.height * yScale;
+
+        if ([x, y, width, height].some((v) => isNaN(v))) return null;
 
         return editMode ? (
           <Rnd
@@ -182,6 +199,7 @@ const polygonPoints = isPolygon ? layout.polygonPoints : null;
               justifyContent: "center",
               fontWeight: "bold",
               fontSize: 14,
+              zIndex: 1,
             }}
           >
             {room.name}

@@ -18,11 +18,12 @@ export default function App() {
   const [editMode, setEditMode] = useState(false);
   const [editableLayout, setEditableLayout] = useState([]);
   const [selectedLayoutType, setSelectedLayoutType] = useState("default");
+  const [layoutPolygon, setLayoutPolygon] = useState([]);
 
   const [customPlotSides, setCustomPlotSides] = useState(4);
   const [customSideLengths, setCustomSideLengths] = useState([10, 20, 10, 20]);
   const [customFrontSideIndex, setCustomFrontSideIndex] = useState(0);
-
+  const [polygon, setPolygon] = useState([]);
   useEffect(() => {
     if (layout?.[0]?.type === "polygon") {
       setEditableLayout(layout.slice(1));
@@ -48,38 +49,36 @@ export default function App() {
   try {
     setLayout([]);
     setEditableLayout([]);
+    setPolygon([]); // always reset before new layout
 
     let res = null;
 
-if (selectedLayoutType === "custom") {
-  const numericSides = customSideLengths.map(length => Number(length));
+    if (selectedLayoutType === "custom") {
+      const numericSides = customSideLengths.map((length) => Number(length));
 
-  res = await axios.post("http://localhost:5000/api/layout/custom", {
-  sides: customSideLengths.map((length) => ({ length })), // Correct
-  frontIndex: customFrontSideIndex,
-  houseType: preset,
-});
+      // Validation (optional but helps avoid empty polygons)
+      if (numericSides.length < 3 || numericSides.some(isNaN)) {
+        alert("Please enter at least 3 valid side lengths.");
+        return;
+      }
 
-}
- else {
-  res = await axios.post("http://localhost:5000/api/layout", {
-    plotLength,
-    plotWidth,
-    houseType: preset,
-    layoutType: selectedLayoutType,
-  });
-}
+      res = await axios.post("http://localhost:5000/api/layout/custom", {
+        sides: numericSides.map((length) => ({ length })),
+        frontIndex: customFrontSideIndex,
+        houseType: preset,
+      });
+    } else {
+      // Rectangular or preset layouts
+      res = await axios.post("http://localhost:5000/api/layout", {
+        plotLength,
+        plotWidth,
+        houseType: preset,
+        layoutType: selectedLayoutType,
+      });
+    }
 
-if (res?.data?.layout) {
-  setLayout(res.data.layout);
-  setEditMode(false);
-} else {
-  alert("Layout generation failed.");
-}
-
-
-    // ✅ Safely check for layout array
-    const dataLayout = res.data.layout;
+    const dataLayout = res?.data?.layout;
+    const polygonPoints = res?.data?.polygonPoints || [];
 
     if (!Array.isArray(dataLayout)) {
       throw new Error("Invalid layout format received from server.");
@@ -87,11 +86,29 @@ if (res?.data?.layout) {
 
     setLayout(dataLayout);
     setEditMode(false);
+
+    // ✅ Only set polygon data if it's custom layout
+    if (selectedLayoutType === "custom" && polygonPoints.length >= 3) {
+      // Extra validation to avoid NaN error
+      const isValidPolygon = polygonPoints.every(
+        (p) => typeof p.x === "number" && typeof p.y === "number" && !isNaN(p.x) && !isNaN(p.y)
+      );
+
+      if (isValidPolygon) {
+        setPolygon(polygonPoints);
+      } else {
+        console.warn("⚠️ Invalid polygon points received:", polygonPoints);
+        setPolygon([]);
+      }
+    } else {
+      setPolygon([]); // Ensure old polygon doesn't persist
+    }
   } catch (err) {
     console.error("❌ Error generating layout:", err);
     alert("Layout generation failed. Please check plot dimensions or try again.");
   }
 };
+
 
 
   const handleAddRoom = () => {
@@ -289,9 +306,9 @@ if (res?.data?.layout) {
                     onDropNewRoom={handleDropRoomFromToolbox}
                   />
                 ) : selectedLayoutType === "custom" ? (
-                  <RoomMap layout={layout} plotLength={30} plotWidth={30} editMode={false} />
+                  <RoomMap layout={layout} plotLength={30} plotWidth={30} editMode={false} polygon={selectedLayoutType === "custom" ? polygon : []} />
                 ) : (
-                  <RoomMap layout={layout} plotLength={plotLength} plotWidth={plotWidth} editMode={false} />
+                  <RoomMap layout={layout} plotLength={plotLength} plotWidth={plotWidth} editMode={false} polygon={polygon} />
                 )}
               </div>
             </motion.div>
