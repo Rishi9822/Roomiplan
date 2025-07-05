@@ -85,8 +85,8 @@ try {
 
   res.json({
     layout,
-    polygonPoints,
-    type: "polygon"
+    polygonPoints
+    // type: "polygon"
   });
 } catch (error) {
   console.error("❌ Error generating custom layout:", error);
