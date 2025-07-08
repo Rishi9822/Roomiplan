@@ -266,7 +266,7 @@ export default function App() {
               onClick={() => setEditMode(!editMode)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`$${editMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"} text-white px-6 py-2 rounded-xl font-semibold`}
+              className={`$${editMode ? "bg-red-500 bg-red-600" : "bg-blue-500 bg-blue-600"} text-black px-6 py-2 rounded-xl font-semibold`}
             >
               {editMode ? "❌ Exit Edit Mode" : "✏️ Edit Layout"}
             </motion.button>
