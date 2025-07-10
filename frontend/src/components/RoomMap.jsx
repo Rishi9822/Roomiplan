@@ -11,11 +11,11 @@ export default function RoomMap({ layout, plotLength, plotWidth, polygon = [], e
 
   const boundingBox = isPolygon
     ? {
-        minX: Math.min(...polygon.map((p) => p?.x ?? 0)),
-        maxX: Math.max(...polygon.map((p) => p?.x ?? 0)),
-        minY: Math.min(...polygon.map((p) => p?.y ?? 0)),
-        maxY: Math.max(...polygon.map((p) => p?.y ?? 0)),
-      }
+      minX: Math.min(...polygon.map((p) => p?.x ?? 0)),
+      maxX: Math.max(...polygon.map((p) => p?.x ?? 0)),
+      minY: Math.min(...polygon.map((p) => p?.y ?? 0)),
+      maxY: Math.max(...polygon.map((p) => p?.y ?? 0)),
+    }
     : null;
 
   const xScale = isPolygon
