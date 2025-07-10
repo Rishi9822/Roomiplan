@@ -45,30 +45,24 @@ export default function App() {
     setEditableLayout(updated);
   };
 
-  const handleGenerate = async () => {
+ const handleGenerate = async () => {
   try {
     setLayout([]);
     setEditableLayout([]);
-    setPolygon([]); // always reset before new layout
+    setPolygon([]); // clear old polygon by default
 
     let res = null;
 
     if (selectedLayoutType === "custom") {
       const numericSides = customSideLengths.map((length) => Number(length));
 
-      // Validation (optional but helps avoid empty polygons)
-      if (numericSides.length < 3 || numericSides.some(isNaN)) {
-        alert("Please enter at least 3 valid side lengths.");
-        return;
-      }
-
       res = await axios.post("http://localhost:5000/api/layout/custom", {
-        sides: numericSides.map((length) => ({ length })),
+        sides: customSideLengths.map((length) => ({ length })),
         frontIndex: customFrontSideIndex,
         houseType: preset,
       });
+      console.log("✅ Backend response:", res?.data);
     } else {
-      // Rectangular or preset layouts
       res = await axios.post("http://localhost:5000/api/layout", {
         plotLength,
         plotWidth,
@@ -80,36 +74,31 @@ export default function App() {
     const dataLayout = res?.data?.layout;
     const polygonPoints = res?.data?.polygonPoints || [];
 
+    // ✅ Handle custom polygon validation
+    if (selectedLayoutType === "custom" && polygonPoints.length < 4) {
+      console.warn("Invalid polygon points received:", polygonPoints);
+      alert("Invalid polygon shape: Must be 4 or more sides.");
+      return; // stop further execution
+    }
+
     if (!Array.isArray(dataLayout)) {
+      alert("Layout generation failed.");
       throw new Error("Invalid layout format received from server.");
     }
 
     setLayout(dataLayout);
     setEditMode(false);
 
-    // ✅ Only set polygon data if it's custom layout
-    if (selectedLayoutType === "custom" && polygonPoints.length >= 3) {
-      // Extra validation to avoid NaN error
-      const isValidPolygon = polygonPoints.every(
-        (p) => typeof p.x === "number" && typeof p.y === "number" && !isNaN(p.x) && !isNaN(p.y)
-      );
-
-      if (isValidPolygon) {
-        setPolygon(polygonPoints);
-      } else {
-        console.warn("⚠️ Invalid polygon points received:", polygonPoints);
-        setPolygon([]);
-      }
+    if (selectedLayoutType === "custom") {
+      setPolygon(polygonPoints);
     } else {
-      setPolygon([]); // Ensure old polygon doesn't persist
+      setPolygon([]);
     }
   } catch (err) {
     console.error("❌ Error generating layout:", err);
     alert("Layout generation failed. Please check plot dimensions or try again.");
   }
 };
-
-
 
   const handleAddRoom = () => {
     const newRoom = {
@@ -266,7 +255,7 @@ export default function App() {
               onClick={() => setEditMode(!editMode)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`$${editMode ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600"} text-white px-6 py-2 rounded-xl font-semibold`}
+              className={`$${editMode ? "bg-red-500 bg-red-600" : "bg-blue-500 bg-blue-600"} text-black px-6 py-2 rounded-xl font-semibold`}
             >
               {editMode ? "❌ Exit Edit Mode" : "✏️ Edit Layout"}
             </motion.button>
