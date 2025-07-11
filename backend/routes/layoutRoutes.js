@@ -70,30 +70,49 @@ router.post('/', async (req, res) => {
 });
 
 // POST: Generate and save layout for irregular polygon plots
+// router.post("/custom", (req, res) => {
+//   const { sides, frontIndex, houseType } = req.body;
+//   console.log("📥 Received custom layout request:", sides, frontIndex, houseType);
+
+//   try {
+//     const { layout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
+
+//     if (!layout || !polygonPoints) {
+//       throw new Error("Layout or polygonPoints not generated");
+//     }
+
+//     console.log("✅ Sending layout and polygonPoints");
+
+//     res.json({
+//       layout,
+//       polygonPoints
+//       // type: "polygon"
+//     });
+//   } catch (error) {
+//     console.error("❌ Error generating custom layout:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+
+// });
+
 router.post("/custom", (req, res) => {
-  const { sides, frontIndex, houseType } = req.body;
-console.log("📥 Received custom layout request:", sides, frontIndex, houseType);
+  try {
+    const { sides, frontIndex, houseType } = req.body;
 
-try {
-  const { layout, polygonPoints } = generateSmartLayoutInPolygon(sides, frontIndex, houseType);
+    if (!sides || !Array.isArray(sides)) {
+      return res.status(400).json({ error: "Invalid sides data." });
+    }
 
-  if (!layout || !polygonPoints) {
-    throw new Error("Layout or polygonPoints not generated");
+    const sideLengths = sides.map(s => Number(s.length));
+    const result = generateSmartLayoutInPolygon(sideLengths, frontIndex, houseType);
+
+    return res.json(result);
+  } catch (err) {
+    console.error("❌ Backend error in /custom:", err.message);
+    return res.status(500).json({ error: "Layout generation failed", message: err.message });
   }
-
-  console.log("✅ Sending layout and polygonPoints");
-
-  res.json({
-    layout,
-    polygonPoints
-    // type: "polygon"
-  });
-} catch (error) {
-  console.error("❌ Error generating custom layout:", error);
-  res.status(500).json({ error: error.message });
-}
-
 });
+
 
 
 // GET: Fetch all layouts
